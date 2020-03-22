@@ -1,37 +1,64 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
+using System.Drawing;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
-using System.Drawing;
 
-namespace AI2
+namespace Zadanie0
 {
-    class Program
+    class Grafika
     {
-
-        static Double[][] kernel = new Double[3][];
-
-        static void Main(string[] args)
+        private Bitmap img;
+        private Double[][] kernel = new Double[3][];
+        public Grafika()
         {
-            Bitmap img = new Bitmap("C:/Users/minik/Desktop/pies.jpg");
 
-            ApplyBlackWhiteMaskAndSave(img);
-            ApplyEdgeDetectionMaskAndSave(img);
-               
-            Console.WriteLine("Done");
-            Console.Read();
         }
 
-        static void ApplyEdgeDetectionMaskAndSave(Bitmap img)
+        public void LoadRGBMatrixFromPath(String path)
+        {
+            try
+            {
+                img = new Bitmap(path);
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error during loading RBG Matrix: {ex.Message}");
+            }
+        }
+
+        public void ApplyFilterAndSave(FilterKind kind, String outputFileName)
         {
             Bitmap imgN = new Bitmap(img.Width, img.Height);
+            String filename = String.Empty;
 
-            kernel[0] = new Double[] { -1, -1, -1 };
-            kernel[1] = new Double[] { -1, 8, -1 };
-            kernel[2] = new Double[] { -1, -1, -1 };
+            if (kind == FilterKind.Sharp)
+            {
+                filename = $"{outputFileName.ToUpper()}_FILTR_SHARP";
+                kernel[0] = new Double[] { -1, -1, -1 };
+                kernel[1] = new Double[] { -1, 8, -1 };
+                kernel[2] = new Double[] { -1, -1, -1 };
+            }
+            else if (kind == FilterKind.Gauss)
+            {
+                filename = $"{outputFileName.ToUpper()}_FILTR_GAUSS";
+                kernel[0] = new Double[] { 1, 2, 1 };
+                kernel[1] = new Double[] { 2, 4, 2 };
+                kernel[2] = new Double[] { 1, 2, 1 };
+            }
+            else if (kind == FilterKind.Blur)
+            {
+                filename = $"{outputFileName.ToUpper()}_FILTR_BLUR";
+                kernel[0] = new Double[] { 1, 1, 1 };
+                kernel[1] = new Double[] { 1, 1, 1 };
+                kernel[2] = new Double[] { 1, 1, 1 };
+            }
 
-            //PrintImageToTextFile(img, "C:/Users/minik/Desktop/imgt.txt");
+            double maskSum = 0;
+            foreach (double[] el in kernel)
+                foreach (double i in el)
+                    maskSum += i;
 
             for (Int32 w = 1; w < img.Width - 1; w++)
             {
@@ -56,44 +83,35 @@ namespace AI2
                             elR += neiR * mask;
 
                             Int32 neiG = img.GetPixel(currX + i, currY + j).G;
-                            elB += neiG * mask;
+                            elG += neiG * mask;
 
                             Int32 neiB = img.GetPixel(currX + i, currY + j).B;
-                            elR += neiB * mask;
+                            elB += neiB * mask;
                         }
+                    }
+
+                    if (maskSum != 0)
+                    {
+                        elR /= (Int32)maskSum;
+                        elG /= (Int32)maskSum;
+                        elB /= (Int32)maskSum;
                     }
 
                     elR = Clamp<Int32>(elR, 0, 255);
                     elG = Clamp<Int32>(elG, 0, 255);
                     elB = Clamp<Int32>(elB, 0, 255);
 
+
                     imgN.SetPixel(currX, currY, Color.FromArgb(elR, elG, elB));
                     elR = elG = elB = 0;
                 }
             }
 
-            imgN.Save("C:/Users/minik/Desktop/pies1.jpg");
+            imgN.Save($"C:/Users/Intel/Desktop/{filename}.png");
 
         }
 
-        static void ApplyBlackWhiteMaskAndSave(Bitmap img)
-        {
-            for (Int32 w = 0; w < img.Width; w++)
-            {
-                for (Int32 h = 0; h < img.Height; h++)
-                {
-                    Color pxl = img.GetPixel(w, h);
-
-                    Int32 avg = (pxl.R + pxl.G + pxl.B) / 3;
-
-                    img.SetPixel(w, h, Color.FromArgb(avg, avg, avg));
-                }
-            }
-
-            img.Save("C:/Users/minik/Desktop/johnny1.jpg");
-        }
-
-        static Double GetMaskValueForNeighbor(Int32 x, Int32 y)
+        private Double GetMaskValueForNeighbor(Int32 x, Int32 y)
         {
             return kernel[x][y];
         }
@@ -107,7 +125,7 @@ namespace AI2
                 for (Int32 h = 0; h < img.Height; h++)
                 {
                     Color pxl = img.GetPixel(w, h);
-                    
+
                     String pixelData = $"({pxl.R.ToString().PadLeft(3, '0')} {pxl.G.ToString().PadLeft(3, '0')} {pxl.B.ToString().PadLeft(3, '0')})";
 
                     sb.Append(pixelData);
@@ -127,5 +145,12 @@ namespace AI2
             else if (val.CompareTo(max) > 0) return max;
             else return val;
         }
+    }
+
+    public enum FilterKind
+    {
+        Gauss = 1,
+        Blur = 2,
+        Sharp = 3
     }
 }
